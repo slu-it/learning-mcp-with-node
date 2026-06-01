@@ -49,6 +49,20 @@ describe('POST / authentication', () => {
         expect(res.status).toBe(401);
     });
 
+    it('returns 403 when token is valid but missing required scope', async () => {
+        vi.mocked(jwtVerify).mockResolvedValue({
+            payload: { ...VALID_PAYLOAD, scope: 'openid' },
+            protectedHeader: { alg: 'RS256' },
+        } as never);
+
+        const res = await request(app)
+            .post('/')
+            .set({ ...MCP_HEADERS, Authorization: 'Bearer scope-less-token' })
+            .send(INIT_REQUEST);
+
+        expect(res.status).toBe(403);
+    });
+
     it('forwards request to MCP handler when token is valid', async () => {
         vi.mocked(jwtVerify).mockResolvedValue({
             payload: VALID_PAYLOAD,

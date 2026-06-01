@@ -82,7 +82,7 @@ const authMiddleware = requireBearerAuth({
             }
         },
     },
-    requiredScopes: [],
+    requiredScopes: ['mcp:tools'],
     resourceMetadataUrl: getOAuthProtectedResourceMetadataUrl(mcpServerUrl),
 });
 
