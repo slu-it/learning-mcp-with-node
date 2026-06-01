@@ -42,7 +42,6 @@ Keycloak runs via `docker-compose.yml` on port 8080. See README.md for first-tim
 
 - **`src/mcp/mcp-server.test.ts`** — unit tests using `InMemoryTransport` (no network, no mocks needed)
 - **`src/mcp-http.test.ts`** — integration tests using `supertest`; `jose` is mocked so no Keycloak needed
-- **`src/mcp-smoke.test.ts`** — spawns the actual `tsx` processes and waits for startup log lines; these have a 20 s timeout
 
 ### Environment variables
 
