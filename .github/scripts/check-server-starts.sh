@@ -1,10 +1,19 @@
 #!/usr/bin/env bash
-# Usage: check-server-starts.sh <npm-script> <startup-log-pattern>
+# Usage: check-server-starts.sh <npm-script> <startup-log-pattern> [stdio|http]
 NPM_SCRIPT="$1"
 PATTERN="$2"
+MODE="${3:-http}"
 
 LOG=$(mktemp)
-npm run "$NPM_SCRIPT" </dev/null >"$LOG" 2>&1 &
+
+if [ "$MODE" = "stdio" ]; then
+  # Keep stdin open — closing it (e.g. </dev/null) causes the STDIO MCP server to exit immediately.
+  # Capture stderr only; stdout carries MCP protocol messages and must not be mixed in.
+  npm run "$NPM_SCRIPT" 2>"$LOG" < <(sleep infinity) &
+else
+  npm run "$NPM_SCRIPT" </dev/null >"$LOG" 2>&1 &
+fi
+
 PID=$!
 for i in $(seq 1 50); do
   sleep 0.2
