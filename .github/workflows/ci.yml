@@ -22,6 +22,6 @@ jobs:
       - name: "Test"
         run: npm run test
       - name: "Check: STDIO server can start successfully"
-        run: bash .github/scripts/check-server-starts.sh dev:stdio "MCP Server running on STDIO" stdio
+        run: bash .github/scripts/check-server-starts.sh start:stdio "MCP Server running on STDIO" stdio
       - name: "Check: HTTP server can start successfully"
-        run: bash .github/scripts/check-server-starts.sh dev:http "MCP Server running on"
+        run: bash .github/scripts/check-server-starts.sh start:http "MCP Server running on"
