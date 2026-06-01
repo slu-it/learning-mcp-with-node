@@ -2,17 +2,28 @@
   "name": "learning-mcp-with-node",
   "version": "1.0.0",
   "scripts": {
-    "build": "tsc"
+    "build": "tsc -p tsconfig.json",
+    "start:http": "node build/mcp-http.js",
+    "start:stdio": "node build/mcp-stdio.js",
+    "dev:http": "tsx src/mcp-http.ts",
+    "dev:stdio": "tsx src/mcp-stdio.ts"
   },
   "keywords": [],
   "type": "module",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
-    "zod": "^3.25.76"
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "cors": "2.8.6",
+    "dotenv": "17.4.2",
+    "express": "5.2.1",
+    "jose": "6.2.3",
+    "zod": "4.4.3"
   },
   "devDependencies": {
-    "@types/node": "^24.0.0",
-    "typescript": "^6.0.3"
+    "@types/cors": "2.8.19",
+    "@types/express": "5.0.6",
+    "@types/node": "25.9.1",
+    "tsx": "4.22.4",
+    "typescript": "6.0.3"
   },
   "files": [
     "build"
