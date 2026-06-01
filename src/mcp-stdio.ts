@@ -5,7 +5,7 @@ async function main() {
     const server = createMcpServer()
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    console.error("Weather MCP Server running on stdio");
+    console.error("MCP Server running on STDIO");
 }
 
 main().catch((error) => {

@@ -1,7 +1,7 @@
 import {McpServer} from "@modelcontextprotocol/sdk/server/mcp.js";
 import {z} from "zod";
 
-export function createMcpServer() {
+export function createMcpServer(): McpServer {
     const server = new McpServer({
         name: "example-server",
         version: "1.0.0"

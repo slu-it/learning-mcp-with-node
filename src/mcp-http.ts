@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { fileURLToPath } from 'url';
 import express from "express";
 import cors from "cors";
 import {createRemoteJWKSet, jwtVerify} from 'jose';
@@ -7,6 +8,7 @@ import {
     mcpAuthMetadataRouter
 } from "@modelcontextprotocol/sdk/server/auth/router.js";
 import {requireBearerAuth} from "@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js";
+import {InvalidTokenError} from "@modelcontextprotocol/sdk/server/auth/errors.js";
 import {StreamableHTTPServerTransport} from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import {createMcpServer} from "./mcp/mcp-server.js";
 
@@ -76,7 +78,7 @@ const authMiddleware = requireBearerAuth({
                 };
             } catch (err) {
                 console.error('auth error', err);
-                throw err
+                throw new InvalidTokenError((err as Error).message ?? 'Invalid token');
             }
         },
     },
@@ -105,8 +107,12 @@ app.use(mcpAuthMetadataRouter({
 
 app.post('/', authMiddleware, mcpPostHandler);
 
-app.listen(CONFIG.port, () => {
-    console.log(`🚀 MCP Server running on ${mcpServerUrl.origin}`);
-    console.log(`📡 MCP endpoint available at ${mcpServerUrl.origin}`);
-    console.log(`🔐 OAuth metadata available at ${getOAuthProtectedResourceMetadataUrl(mcpServerUrl)}`);
-});
+export { app };
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+    app.listen(CONFIG.port, () => {
+        console.log(`🚀 MCP Server running on ${mcpServerUrl.origin}`);
+        console.log(`📡 MCP endpoint available at ${mcpServerUrl.origin}`);
+        console.log(`🔐 OAuth metadata available at ${getOAuthProtectedResourceMetadataUrl(mcpServerUrl)}`);
+    });
+}
