@@ -1,4 +1,5 @@
 import {McpServer} from "@modelcontextprotocol/sdk/server/mcp.js";
+import {CallToolResult} from "@modelcontextprotocol/sdk/types.js";
 import {z} from "zod";
 
 export function createMcpServer(): McpServer {
@@ -20,7 +21,7 @@ export function createMcpServer(): McpServer {
                 message: z.string().describe("Message to send")
             }
         },
-        async ({phoneNumber, message}) => {
+        async ({phoneNumber, message}): Promise<CallToolResult> => {
             log(`send message to ${phoneNumber}: ${message}`);
             return {
                 content: [{type: "text", text: "Message was sent."}]
@@ -36,7 +37,7 @@ export function createMcpServer(): McpServer {
                 name: z.string().describe("Contact name to look up")
             }
         },
-        async ({name}) => {
+        async ({name}): Promise<CallToolResult> => {
             const number = contactNumbers[name.trim().toLowerCase()];
             log(`returning number for "${name}": ${number}`);
             if (!number) {
