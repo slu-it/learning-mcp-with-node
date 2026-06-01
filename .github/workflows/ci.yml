@@ -7,7 +7,7 @@ on:
     branches: ["master"]
 
 jobs:
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -21,3 +21,7 @@ jobs:
         run: npm run build
       - name: "Test"
         run: npm run test
+      - name: "Check: STDIO server can start successfully"
+        run: bash .github/scripts/check-server-starts.sh dev:stdio "MCP Server running on STDIO"
+      - name: "Check: HTTP server can start successfully"
+        run: bash .github/scripts/check-server-starts.sh dev:http "MCP Server running on"
