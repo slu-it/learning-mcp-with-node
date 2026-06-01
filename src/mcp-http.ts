@@ -1,7 +1,5 @@
 import 'dotenv/config';
-import { fileURLToPath } from 'url';
 import express from "express";
-import cors from "cors";
 import {createRemoteJWKSet, jwtVerify} from 'jose';
 import {
     getOAuthProtectedResourceMetadataUrl,
@@ -11,6 +9,8 @@ import {requireBearerAuth} from "@modelcontextprotocol/sdk/server/auth/middlewar
 import {InvalidTokenError} from "@modelcontextprotocol/sdk/server/auth/errors.js";
 import {StreamableHTTPServerTransport} from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import {createMcpServer} from "./mcp/mcp-server.js";
+
+// CONFIGURATION
 
 const CONFIG = {
     host: process.env.HOST || "localhost",
@@ -28,34 +28,7 @@ const JWKS = createRemoteJWKSet(
 const authBaseUrl = new URL(`http://${CONFIG.auth.host}:${CONFIG.auth.port}/realms/${CONFIG.auth.realm}`);
 const mcpServerUrl = new URL(`http://${CONFIG.host}:${CONFIG.port}`);
 
-// Stateless mode: a fresh server and transport are created for every POST and
-// torn down when the response closes. This isolates concurrent clients, since a
-// shared transport would collide on JSON-RPC request IDs.
-const mcpPostHandler = async (req: express.Request, res: express.Response) => {
-    const server = createMcpServer();
-    const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: undefined,
-    });
-
-    res.on('close', () => {
-        transport.close();
-        server.close();
-    });
-
-    try {
-        await server.connect(transport);
-        await transport.handleRequest(req, res, req.body);
-    } catch (err) {
-        console.error('[mcp] error handling request', err);
-        if (!res.headersSent) {
-            res.status(500).json({
-                jsonrpc: '2.0',
-                error: {code: -32603, message: 'Internal server error'},
-                id: null,
-            });
-        }
-    }
-};
+// AUTHENTICATION / AUTHORIZATION SETUP
 
 function cleanJwtUrl(url: URL): string {
     const str = url.toString();
@@ -86,12 +59,14 @@ const authMiddleware = requireBearerAuth({
     resourceMetadataUrl: getOAuthProtectedResourceMetadataUrl(mcpServerUrl),
 });
 
+// EXPRESS BOOTSTRAPPING
+
 const app = express();
+export {app};
+
+// define middleware usage
+
 app.use(express.json())
-app.use(cors({
-    origin: '*',
-    exposedHeaders: ['Mcp-Session-Id'],
-}));
 app.use(mcpAuthMetadataRouter({
     oauthMetadata: {
         issuer: authBaseUrl.toString(),
@@ -105,14 +80,44 @@ app.use(mcpAuthMetadataRouter({
     resourceName: 'MCP Node.js Example Server',
 }));
 
-app.post('/', authMiddleware, mcpPostHandler);
+// define routes
 
-export { app };
-
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
-    app.listen(CONFIG.port, () => {
-        console.log(`🚀 MCP Server running on ${mcpServerUrl.origin}`);
-        console.log(`📡 MCP endpoint available at ${mcpServerUrl.origin}`);
-        console.log(`🔐 OAuth metadata available at ${getOAuthProtectedResourceMetadataUrl(mcpServerUrl)}`);
+// Stateless mode: a fresh server and transport are created for every POST and
+// torn down when the response closes. This isolates concurrent clients, since a
+// shared transport would collide on JSON-RPC request IDs.
+app.post('/', authMiddleware, async (req: express.Request, res: express.Response) => {
+    const server = createMcpServer();
+    const transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: undefined,
     });
-}
+
+    res.on('close', () => {
+        transport.close();
+        server.close();
+    });
+
+    await server.connect(transport);
+    await transport.handleRequest(req, res, req.body);
+});
+
+// define error handling
+
+app.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    if (!res.headersSent) {
+        console.error('converting error to mcp error response', err);
+        res.status(500)
+            .json({
+                jsonrpc: '2.0',
+                error: {code: -32603, message: 'Internal server error'},
+                id: null,
+            });
+    }
+});
+
+// start
+
+app.listen(CONFIG.port, () => {
+    console.log(`🚀 MCP Server running on ${mcpServerUrl.origin}`);
+    console.log(`📡 MCP endpoint available at ${mcpServerUrl.origin}`);
+    console.log(`🔐 OAuth metadata available at ${getOAuthProtectedResourceMetadataUrl(mcpServerUrl)}`);
+});

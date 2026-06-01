@@ -1,4 +1,4 @@
-import { vi, describe, it, expect, beforeEach } from 'vitest';
+import {describe, expect, it, vi} from 'vitest';
 import request from 'supertest';
 
 vi.mock('jose', () => ({
@@ -6,8 +6,14 @@ vi.mock('jose', () => ({
     jwtVerify: vi.fn(),
 }));
 
-// Import after mock so module-level jose calls use the mock
+vi.mock('./mcp/mcp-server.js', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('./mcp/mcp-server.js')>();
+    return { createMcpServer: vi.fn(actual.createMcpServer) };
+});
+
+// Import after mocks so module-level jose calls use the mock
 const { jwtVerify } = await import('jose');
+const { createMcpServer } = await import('./mcp/mcp-server.js');
 const { app } = await import('./mcp-http.js');
 
 const VALID_PAYLOAD = {
@@ -85,5 +91,30 @@ describe('GET /.well-known/oauth-protected-resource', () => {
             .get('/.well-known/oauth-protected-resource');
         expect(res.status).toBe(200);
         expect(res.body.resource).toBeDefined();
+    });
+});
+
+describe('POST / error handling', () => {
+    it('returns 500 JSON-RPC error when the MCP handler throws', async () => {
+        vi.mocked(jwtVerify).mockResolvedValue({
+            payload: VALID_PAYLOAD,
+            protectedHeader: { alg: 'RS256' },
+        } as never);
+
+        vi.mocked(createMcpServer).mockImplementationOnce(() => {
+            throw new Error('simulated failure');
+        });
+
+        const res = await request(app)
+            .post('/')
+            .set({ ...MCP_HEADERS, Authorization: 'Bearer valid-token' })
+            .send(INIT_REQUEST);
+
+        expect(res.status).toBe(500);
+        expect(res.body).toMatchObject({
+            jsonrpc: '2.0',
+            error: { code: -32603, message: 'Internal server error' },
+            id: null,
+        });
     });
 });
