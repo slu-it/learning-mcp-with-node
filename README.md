@@ -22,15 +22,13 @@ When starting Keycloak for the first time, the steps from the original documenta
 
 ### Testing with Claude Code
 
-To test if the MCP works using Claude Code, you can register it like this:
+To test if the MCP servers work using Claude Code, you can register them like this and afterward ask Claude "What is John's phone number?".
 
 #### STDIO
 
 ```
 claude mcp add learning-mcp-with-node-stdio -e NODE_VERSION=24 -- /home/user/.nvm/nvm-exec node /home/user/projects/learning-mcp-with-node/build/mcp-stdio.js
 ```
-
-Testing: TBD
 
 #### HTTP
 
@@ -41,5 +39,3 @@ claude mcp add --transport http learning-mcp-with-node-http http://localhost:300
 When starting Claude afterward, the MCP server will be in the "needs authentication" state (check with the`/mcp` command).
 Starting the authentication process should open a browser window where Keycloak asks you to approve the registration.
 After that the MCP server should be usable.
-
-You can test that by asking Claude "What is John's phone number?".
