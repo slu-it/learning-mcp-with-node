@@ -149,3 +149,4 @@ vite.config.ts.timestamp-*
 /.idea/vcs.xml
 
 build
+http-client.private.env.json

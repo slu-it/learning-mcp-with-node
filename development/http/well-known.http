@@ -1,0 +1,1 @@
+GET http://localhost:3000/.well-known/oauth-protected-resource

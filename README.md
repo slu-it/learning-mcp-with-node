@@ -10,15 +10,13 @@ The setup for that is based on https://modelcontextprotocol.io/docs/tutorials/se
 Keycloak can be started using Docker Compose with [docker-compose.yml](docker-compose.yml):
 
 * defines a volume to keep data between sessions
-* server is available under localhost:8080
+* server is available under localhost:9000
 
 ### First Time Setup
 
-When starting Keycloak for the first time, the steps from the original documentation need to be applied:
-
-* create client scope `mcp:tools` with type "Default" and enabled inclusion in token scope
-* configure audience mapper for that scope with custom audience = `http://localhost:3000`
-* configure client registration by disabling "client URIs must match" and add you local IP to the trusted hosts
+There are several different resources to configure to set up Keycloak.
+To make things easy, there is a setup script in the form of a [HTTP client](development/keycloak-setup/initial-setup.http).
+After starting Keycloak for the first time using Docker Compose, you can execute this client script ("run all") using the `dev` environment.
 
 ### Testing with Claude Code
 

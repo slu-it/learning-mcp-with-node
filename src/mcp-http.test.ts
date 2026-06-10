@@ -20,7 +20,7 @@ const VALID_PAYLOAD = {
     azp: 'test-client',
     scope: 'mcp:tools',
     exp: Math.floor(Date.now() / 1000) + 3600,
-    iss: 'http://localhost:8080/realms/master',
+    iss: 'http://localhost:9000/realms/master',
     aud: 'http://localhost:3000',
 };
 

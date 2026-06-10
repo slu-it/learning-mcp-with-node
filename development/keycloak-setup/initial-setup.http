@@ -1,0 +1,161 @@
+### 1.1 Create MCP scope
+POST http://{{keycloak.host}}:{{keycloak.port}}/admin/realms/{{keycloak.realm}}/client-scopes
+Authorization: Bearer {{$auth.token("keycloak-admin")}}
+Content-Type: application/json
+
+{
+  "name": "mcp:tools",
+  "protocol": "openid-connect",
+  "attributes": {
+    "display.on.consent.screen": "true",
+    "include.in.token.scope": "true"
+  }
+}
+
+> {%
+    client.test("Client Scope created", function() {
+        client.assert(response.status === 201, "Expected 201 but got " + response.status);
+    });
+    const location = response.headers.valueOf("Location");
+    const scopeId = location.substring(location.lastIndexOf("/") + 1);
+    client.global.set("mcpScopeId", scopeId);
+    client.log("Stored mcpScopeId: " + client.global.get("mcpScopeId"));
+%}
+
+### 1.2 Add MCP Scope Audience Mapper
+POST http://{{keycloak.host}}:{{keycloak.port}}/admin/realms/{{keycloak.realm}}/client-scopes/{{mcpScopeId}}/protocol-mappers/models
+Authorization: Bearer {{$auth.token("keycloak-admin")}}
+Content-Type: application/json
+
+{
+  "name": "audience-mapper",
+  "protocol": "openid-connect",
+  "protocolMapper": "oidc-audience-mapper",
+  "config": {
+    "included.custom.audience": "{{service.audience}}",
+    "access.token.claim": "true",
+    "introspection.token.claim": "true"
+  }
+}
+
+### 1.3 Set MCP Scope as Default for Whole Realm
+PUT http://{{keycloak.host}}:{{keycloak.port}}/admin/realms/{{keycloak.realm}}/default-default-client-scopes/{{mcpScopeId}}
+Authorization: Bearer {{$auth.token("keycloak-admin")}}
+
+### 2.1 Create API Scope
+POST http://{{keycloak.host}}:{{keycloak.port}}/admin/realms/{{keycloak.realm}}/client-scopes
+Authorization: Bearer {{$auth.token("keycloak-admin")}}
+Content-Type: application/json
+
+{
+  "name": "api:access",
+  "protocol": "openid-connect",
+  "attributes": {
+    "include.in.token.scope": "true"
+  }
+}
+
+> {%
+    client.test("Client Scope created", function() {
+        client.assert(response.status === 201, "Expected 201 but got " + response.status);
+    });
+    const location = response.headers.valueOf("Location");
+    const scopeId = location.substring(location.lastIndexOf("/") + 1);
+    client.global.set("apiScopeId", scopeId);
+    client.log("Stored apiScopeId: " + client.global.get("apiScopeId"));
+%}
+
+### 2.2 Add API Scope Audience Mapper
+POST http://{{keycloak.host}}:{{keycloak.port}}/admin/realms/{{keycloak.realm}}/client-scopes/{{apiScopeId}}/protocol-mappers/models
+Authorization: Bearer {{$auth.token("keycloak-admin")}}
+Content-Type: application/json
+
+{
+  "name": "audience-mapper",
+  "protocol": "openid-connect",
+  "protocolMapper": "oidc-audience-mapper",
+  "config": {
+    "included.custom.audience": "{{service.audience}}",
+    "access.token.claim": "true",
+    "introspection.token.claim": "true"
+  }
+}
+
+### 3.1 Create Test Client
+POST http://{{keycloak.host}}:{{keycloak.port}}/admin/realms/{{keycloak.realm}}/clients
+Authorization: Bearer {{$auth.token("keycloak-admin")}}
+Content-Type: application/json
+
+{
+  "clientId": "test-client",
+  "protocol": "openid-connect",
+  "publicClient": false,
+  "authorizationServicesEnabled": true,
+  "serviceAccountsEnabled": true,
+  "directAccessGrantsEnabled": true,
+  "standardFlowEnabled": false,
+  "implicitFlowEnabled": false
+}
+
+> {%
+    client.test("Client Created", function() {
+        client.assert(response.status === 201, "Expected 201 but got " + response.status);
+    });
+    const location = response.headers.valueOf("Location");
+    client.global.set("testClientUuid", location.substring(location.lastIndexOf("/") + 1));
+    client.log("Stored testClientUuid: " + client.global.get("testClientUuid"));
+%}
+
+### 3.2 Add MCP Scope to Test Client
+PUT http://{{keycloak.host}}:{{keycloak.port}}/admin/realms/{{keycloak.realm}}/clients/{{testClientUuid}}/default-client-scopes/{{mcpScopeId}}
+Authorization: Bearer {{$auth.token("keycloak-admin")}}
+
+### 3.3 Add API Scope to Test Client
+PUT http://{{keycloak.host}}:{{keycloak.port}}/admin/realms/{{keycloak.realm}}/clients/{{testClientUuid}}/default-client-scopes/{{apiScopeId}}
+Authorization: Bearer {{$auth.token("keycloak-admin")}}
+
+### 4.1 Get Trusted Hosts Policy ID
+GET http://{{keycloak.host}}:{{keycloak.port}}/admin/realms/{{keycloak.realm}}/components?type=org.keycloak.services.clientregistration.policy.ClientRegistrationPolicy
+Authorization: Bearer {{$auth.token("keycloak-admin")}}
+
+> {%
+    const policy = response.body.find(p => p.providerId === "trusted-hosts" && p.subType === "anonymous");
+    client.assert(policy !== undefined, "Trusted Hosts anonymous policy not found");
+    client.global.set("trustedHostsPolicyId", policy.id);
+    client.global.set("trustedHostsParentId", policy.parentId);
+    client.log("Trusted Hosts Policy ID: " + policy.id);
+    client.log("Trusted Hosts Parent ID: " + policy.parentId);
+%}
+
+### 4.2 Update Trusted Hosts Policy
+PUT http://{{keycloak.host}}:{{keycloak.port}}/admin/realms/{{keycloak.realm}}/components/{{trustedHostsPolicyId}}
+Authorization: Bearer {{$auth.token("keycloak-admin")}}
+Content-Type: application/json
+
+{
+  "id": "{{trustedHostsPolicyId}}",
+  "name": "Trusted Hosts",
+  "providerId": "trusted-hosts",
+  "providerType": "org.keycloak.services.clientregistration.policy.ClientRegistrationPolicy",
+  "parentId": "{{trustedHostsParentId}}",
+  "subType": "anonymous",
+  "config": {
+    "trusted-hosts": [
+      "172.17.0.1",
+      "172.18.0.1",
+      "172.19.0.1",
+      "172.20.0.1",
+      "172.21.0.1",
+      "172.22.0.1",
+      "172.23.0.1",
+      "172.24.0.1",
+      "172.25.0.1"
+    ],
+    "host-sending-registration-request-must-match": [
+      "true"
+    ],
+    "client-uris-must-match": [
+      "false"
+    ]
+  }
+}

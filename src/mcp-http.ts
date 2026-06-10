@@ -17,9 +17,10 @@ const CONFIG = {
     port: Number(process.env.PORT) || 3000,
     auth: {
         host: process.env.AUTH_HOST || process.env.HOST || "localhost",
-        port: Number(process.env.AUTH_PORT) || 8080,
+        port: Number(process.env.AUTH_PORT) || 9000,
         realm: process.env.AUTH_REALM || "master"
     },
+    audience: process.env.AUDIENCE || "learning-mcp-with-node"
 };
 const JWKS = createRemoteJWKSet(
     new URL(`http://${CONFIG.auth.host}:${CONFIG.auth.port}/realms/${CONFIG.auth.realm}/protocol/openid-connect/certs`)
@@ -41,7 +42,7 @@ const authMiddleware = requireBearerAuth({
             try {
                 const {payload} = await jwtVerify(token, JWKS, {
                     issuer: cleanJwtUrl(authBaseUrl),
-                    audience: cleanJwtUrl(mcpServerUrl),
+                    audience: CONFIG.audience,
                 });
                 return {
                     token,
@@ -77,7 +78,7 @@ app.use(mcpAuthMetadataRouter({
     },
     resourceServerUrl: mcpServerUrl,
     scopesSupported: ['mcp:tools', 'offline_access'],
-    resourceName: 'MCP Node.js Example Server',
+    resourceName: 'learning-mcp-with-node',
 }));
 
 // define routes

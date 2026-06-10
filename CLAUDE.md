@@ -30,13 +30,13 @@ The project implements the same MCP tool set exposed over two transports:
 ### OAuth2 / Auth flow (HTTP only)
 
 The HTTP server requires a JWT bearer token with:
-- **Issuer**: Keycloak realm URL (default `http://localhost:8080/realms/master`)
+- **Issuer**: Keycloak realm URL (default `http://localhost:9000/realms/master`)
 - **Audience**: MCP server URL (default `http://localhost:3000`)
 - **Scope**: `mcp:tools`
 
 The MCP SDK's `mcpAuthMetadataRouter` serves `/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server` unauthenticated, so clients can discover the auth endpoints automatically.
 
-Keycloak runs via `docker-compose.yml` on port 8080. See README.md for first-time Keycloak setup steps.
+Keycloak runs via `docker-compose.yml` on port 9000. See README.md for first-time Keycloak setup steps.
 
 ### Test structure
 
@@ -47,4 +47,4 @@ Keycloak runs via `docker-compose.yml` on port 8080. See README.md for first-tim
 
 Configured via `.env` (see `.env.example`). Key variables:
 - `HOST`, `PORT` — MCP server bind address (default `localhost:3000`)
-- `AUTH_HOST`, `AUTH_PORT`, `AUTH_REALM` — Keycloak coordinates (default `localhost:8080/realms/master`)
+- `AUTH_HOST`, `AUTH_PORT`, `AUTH_REALM` — Keycloak coordinates (default `localhost:9000/realms/master`)
