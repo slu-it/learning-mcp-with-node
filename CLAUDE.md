@@ -56,6 +56,5 @@ Keycloak runs via `docker-compose.yml` on port 9000. See README.md for first-tim
 
 ### Environment variables
 
-Configured via `.env` (see `.env.example`). Key variables:
 - `HOST`, `PORT` — MCP server bind address (default `localhost:3000`)
 - `AUTH_HOST`, `AUTH_PORT`, `AUTH_REALM` — Keycloak coordinates (default `localhost:9000/realms/master`)

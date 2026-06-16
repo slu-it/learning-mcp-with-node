@@ -32,8 +32,11 @@ claude mcp add learning-mcp-with-node-stdio -e NODE_VERSION=24 -- /home/user/.nv
 
 #### HTTP
 
+Both the Express.js and Nest.js implementations provide the same API / MCP Endpoints.
+You can start whichever you want and connect Claude Code to it like this:
+
 ```
-claude mcp add --transport http learning-mcp-with-node-http http://localhost:3000/
+claude mcp add --transport http learning-mcp-with-node-http http://localhost:3000/mcp
 ```
 
 When starting Claude afterward, the MCP server will be in the "needs authentication" state (check with the`/mcp` command).
