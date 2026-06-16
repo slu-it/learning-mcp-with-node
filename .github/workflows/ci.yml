@@ -9,6 +9,9 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: with-express
     steps:
       - uses: actions/checkout@v6
       - name: "Set up Node.js"
@@ -22,6 +25,6 @@ jobs:
       - name: "Test"
         run: npm run test
       - name: "Check: STDIO server can start successfully"
-        run: bash .github/scripts/check-server-starts.sh start:stdio "MCP Server running on STDIO" stdio
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/check-server-starts.sh" start:stdio "MCP Server running on STDIO" stdio
       - name: "Check: HTTP server can start successfully"
-        run: bash .github/scripts/check-server-starts.sh start:http "MCP Server running on"
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/check-server-starts.sh" start:http "MCP Server running on"

@@ -2,12 +2,17 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Project layout
+
+The Express.js implementation lives in **`with-express/`** — that is the npm project root (`package.json`, `tsconfig.json`, `src/`, etc.). Run all npm/node commands from there. The `with-nestjs/` folder is reserved for a future NestJS implementation of the same MCP server.
+
 ## Commands
 
-There is no global Node installation. Always use NVM, sourcing it first since it isn't loaded in non-interactive shells:
+There is no global Node installation. Always use NVM, sourcing it first since it isn't loaded in non-interactive shells. Commands run from the `with-express/` directory:
 
 ```bash
 source ~/.nvm/nvm.sh && nvm use 25   # activate Node 25 before any npm/node commands
+cd with-express
 npm run build                         # compile TypeScript to build/
 npm test                              # run all tests (unit + integration + smoke)
 npm run dev:http                      # run HTTP server without building (tsx)
@@ -16,16 +21,16 @@ npm run dev:stdio                     # run STDIO server without building (tsx)
 
 Run a single test file:
 ```bash
-source ~/.nvm/nvm.sh && nvm use 25 && npx vitest run src/mcp/mcp-server.test.ts
+source ~/.nvm/nvm.sh && nvm use 25 && cd with-express && npx vitest run src/mcp/mcp-server.test.ts
 ```
 
 ## Architecture
 
 The project implements the same MCP tool set exposed over two transports:
 
-- **`src/mcp/mcp-server.ts`** — the shared core: a `createMcpServer()` factory that registers all tools. Both transports call this factory; tool logic lives here exclusively.
-- **`src/mcp-stdio.ts`** — wraps `createMcpServer()` with `StdioServerTransport`. Logging must use `console.error` (not `console.log`) to avoid corrupting the STDIO protocol stream.
-- **`src/mcp-http.ts`** — wraps `createMcpServer()` with `StreamableHTTPServerTransport` behind an Express app. Stateless: a fresh server+transport pair is created per POST request to avoid JSON-RPC request ID collisions across concurrent clients. Secured with OAuth2 bearer tokens verified against Keycloak via `jose`.
+- **`with-express/src/mcp/mcp-server.ts`** — the shared core: a `createMcpServer()` factory that registers all tools. Both transports call this factory; tool logic lives here exclusively.
+- **`with-express/src/mcp-stdio.ts`** — wraps `createMcpServer()` with `StdioServerTransport`. Logging must use `console.error` (not `console.log`) to avoid corrupting the STDIO protocol stream.
+- **`with-express/src/mcp-http.ts`** — wraps `createMcpServer()` with `StreamableHTTPServerTransport` behind an Express app. Stateless: a fresh server+transport pair is created per POST request to avoid JSON-RPC request ID collisions across concurrent clients. Secured with OAuth2 bearer tokens verified against Keycloak via `jose`.
 
 ### OAuth2 / Auth flow (HTTP only)
 
@@ -40,8 +45,8 @@ Keycloak runs via `docker-compose.yml` on port 9000. See README.md for first-tim
 
 ### Test structure
 
-- **`src/mcp/mcp-server.test.ts`** — unit tests using `InMemoryTransport` (no network, no mocks needed)
-- **`src/mcp-http.test.ts`** — integration tests using `supertest`; `jose` is mocked so no Keycloak needed
+- **`with-express/src/mcp/mcp-server.test.ts`** — unit tests using `InMemoryTransport` (no network, no mocks needed)
+- **`with-express/src/mcp-http.test.ts`** — integration tests using `supertest`; `jose` is mocked so no Keycloak needed
 
 ### Environment variables
 

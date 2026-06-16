@@ -2,6 +2,8 @@
 
 This repository contains code I've written to implement an MCP server using Node.js.
 
+The Express.js implementation lives in [`with-express/`](with-express); run `npm` commands (e.g. `npm run build`) from there.
+
 ## Local Setup
 
 The MCP server is secured using OAuth2.
@@ -25,7 +27,7 @@ To test if the MCP servers work using Claude Code, you can register them like th
 #### STDIO
 
 ```
-claude mcp add learning-mcp-with-node-stdio -e NODE_VERSION=24 -- /home/user/.nvm/nvm-exec node /home/user/projects/learning-mcp-with-node/build/mcp-stdio.js
+claude mcp add learning-mcp-with-node-stdio -e NODE_VERSION=24 -- /home/user/.nvm/nvm-exec node /home/user/projects/learning-mcp-with-node/with-express/build/mcp-stdio.js
 ```
 
 #### HTTP
