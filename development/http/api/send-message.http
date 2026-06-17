@@ -1,0 +1,9 @@
+POST http://localhost:3000/api/messaging/send
+Content-Type: application/json
+Authorization: Bearer {{$auth.token("keycloak")}}
+
+{
+  "channel": "WHATSAPP",
+  "phoneNumber": "+49 123 123456",
+  "message": "Hello World!"
+}

@@ -37,10 +37,10 @@ const INIT_REQUEST = {
 
 const MCP_HEADERS = { Accept: 'application/json, text/event-stream' };
 
-describe('POST / authentication', () => {
+describe('POST /mcp authentication', () => {
     it('returns 401 when no Authorization header is provided', async () => {
         const res = await request(app)
-            .post('/')
+            .post('/mcp')
             .set(MCP_HEADERS)
             .send(INIT_REQUEST);
         expect(res.status).toBe(401);
@@ -49,7 +49,7 @@ describe('POST / authentication', () => {
     it('returns 401 when token verification fails', async () => {
         vi.mocked(jwtVerify).mockRejectedValue(new Error('invalid signature'));
         const res = await request(app)
-            .post('/')
+            .post('/mcp')
             .set({ ...MCP_HEADERS, Authorization: 'Bearer bad-token' })
             .send(INIT_REQUEST);
         expect(res.status).toBe(401);
@@ -62,8 +62,22 @@ describe('POST / authentication', () => {
         } as never);
 
         const res = await request(app)
-            .post('/')
+            .post('/mcp')
             .set({ ...MCP_HEADERS, Authorization: 'Bearer scope-less-token' })
+            .send(INIT_REQUEST);
+
+        expect(res.status).toBe(403);
+    });
+
+    it('returns 403 when token only carries the api:access scope', async () => {
+        vi.mocked(jwtVerify).mockResolvedValue({
+            payload: { ...VALID_PAYLOAD, scope: 'api:access' },
+            protectedHeader: { alg: 'RS256' },
+        } as never);
+
+        const res = await request(app)
+            .post('/mcp')
+            .set({ ...MCP_HEADERS, Authorization: 'Bearer api-token' })
             .send(INIT_REQUEST);
 
         expect(res.status).toBe(403);
@@ -76,12 +90,73 @@ describe('POST / authentication', () => {
         } as never);
 
         const res = await request(app)
-            .post('/')
+            .post('/mcp')
             .set({ ...MCP_HEADERS, Authorization: 'Bearer valid-token' })
             .send(INIT_REQUEST);
 
         expect(res.status).toBe(200);
         expect(res.text).toContain('"result"');
+    });
+});
+
+describe('GET /health', () => {
+    it('returns 200 with {status: ok} without authentication', async () => {
+        const res = await request(app).get('/health');
+        expect(res.status).toBe(200);
+        expect(res.body).toEqual({ status: 'ok' });
+    });
+});
+
+describe('POST /api/messaging/send', () => {
+    const API_PAYLOAD = { ...VALID_PAYLOAD, scope: 'api:access' };
+    const BODY = { phoneNumber: '555 123456', message: 'Hello!' };
+
+    it('returns 401 when no Authorization header is provided', async () => {
+        const res = await request(app).post('/api/messaging/send').send(BODY);
+        expect(res.status).toBe(401);
+    });
+
+    it('returns 403 when token is missing the api:access scope', async () => {
+        vi.mocked(jwtVerify).mockResolvedValue({
+            payload: { ...VALID_PAYLOAD, scope: 'mcp:tools' },
+            protectedHeader: { alg: 'RS256' },
+        } as never);
+
+        const res = await request(app)
+            .post('/api/messaging/send')
+            .set({ Authorization: 'Bearer mcp-token' })
+            .send(BODY);
+
+        expect(res.status).toBe(403);
+    });
+
+    it('sends the message when token carries the api:access scope', async () => {
+        vi.mocked(jwtVerify).mockResolvedValue({
+            payload: API_PAYLOAD,
+            protectedHeader: { alg: 'RS256' },
+        } as never);
+
+        const res = await request(app)
+            .post('/api/messaging/send')
+            .set({ Authorization: 'Bearer api-token' })
+            .send(BODY);
+
+        expect(res.status).toBe(200);
+        expect(res.body).toEqual({ status: 'sent' });
+    });
+
+    it('returns 400 when required fields are missing', async () => {
+        vi.mocked(jwtVerify).mockResolvedValue({
+            payload: API_PAYLOAD,
+            protectedHeader: { alg: 'RS256' },
+        } as never);
+
+        const res = await request(app)
+            .post('/api/messaging/send')
+            .set({ Authorization: 'Bearer api-token' })
+            .send({ phoneNumber: '555 123456' });
+
+        expect(res.status).toBe(400);
     });
 });
 
@@ -94,7 +169,7 @@ describe('GET /.well-known/oauth-protected-resource', () => {
     });
 });
 
-describe('POST / error handling', () => {
+describe('POST /mcp error handling', () => {
     it('returns 500 JSON-RPC error when the MCP handler throws', async () => {
         vi.mocked(jwtVerify).mockResolvedValue({
             payload: VALID_PAYLOAD,
@@ -106,7 +181,7 @@ describe('POST / error handling', () => {
         });
 
         const res = await request(app)
-            .post('/')
+            .post('/mcp')
             .set({ ...MCP_HEADERS, Authorization: 'Bearer valid-token' })
             .send(INIT_REQUEST);
 

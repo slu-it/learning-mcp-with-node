@@ -1,9 +1,6 @@
-# needs a session ID, which can be created using "mcp-create-session.http" (will be part of the response headers)
-
-POST http://localhost:3000
+POST http://localhost:3000/mcp
 Content-Type: application/json
 Authorization: Bearer {{$auth.token("keycloak")}}
 Accept: application/json,text/event-stream
-mcp-session-id: {{mcpSessionId}}
 
 {"jsonrpc": "2.0", "method": "tools/list", "id": 1}

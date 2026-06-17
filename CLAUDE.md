@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project layout
 
-The Express.js implementation lives in **`with-express/`** — that is the npm project root (`package.json`, `tsconfig.json`, `src/`, etc.). Run all npm/node commands from there. The `with-nestjs/` folder is reserved for a future NestJS implementation of the same MCP server.
+The Express.js implementation lives in **`with-express/`** — that is the npm project root (`package.json`, `tsconfig.json`, `src/`, etc.). Run all npm/node commands from there. The `with-nestjs/` folder holds a bootstrapped NestJS project, a future NestJS implementation of the same MCP server.
 
 ## Commands
 
@@ -26,18 +26,24 @@ source ~/.nvm/nvm.sh && nvm use 25 && cd with-express && npx vitest run src/mcp/
 
 ## Architecture
 
-The project implements the same MCP tool set exposed over two transports:
+The same business logic is exposed both as MCP tools (over two transports) and as a classical REST API. The business logic lives in a transport-agnostic service layer; MCP tool handlers and REST route handlers are thin adapters that wrap it with their respective response models.
 
-- **`with-express/src/mcp/mcp-server.ts`** — the shared core: a `createMcpServer()` factory that registers all tools. Both transports call this factory; tool logic lives here exclusively.
+- **`with-express/src/business/`** — the business layer holding all business logic, with no transport or MCP awareness:
+  - **`contacts.ts`** — `getPhoneNumberOfContact(name)` looks up a contact, logs, and returns the phone number or `null`.
+  - **`messaging.ts`** — `sendWhatsappMessage(phoneNumber, message)` logs the (simulated) send.
+- **`with-express/src/logger.ts`** — shared `log()` helper; writes to `console.error` so it never corrupts the STDIO protocol stream.
+- **`with-express/src/mcp/mcp-server.ts`** — the shared MCP core: a `createMcpServer()` factory that registers all tools. Tool handlers call the service layer and wrap results in MCP `CallToolResult` responses. Both transports call this factory.
 - **`with-express/src/mcp-stdio.ts`** — wraps `createMcpServer()` with `StdioServerTransport`. Logging must use `console.error` (not `console.log`) to avoid corrupting the STDIO protocol stream.
-- **`with-express/src/mcp-http.ts`** — wraps `createMcpServer()` with `StreamableHTTPServerTransport` behind an Express app. Stateless: a fresh server+transport pair is created per POST request to avoid JSON-RPC request ID collisions across concurrent clients. Secured with OAuth2 bearer tokens verified against Keycloak via `jose`.
+- **`with-express/src/mcp-http.ts`** — Express app exposing three route groups. The MCP endpoint (`POST /mcp`) wraps `createMcpServer()` with `StreamableHTTPServerTransport`, stateless: a fresh server+transport pair per POST avoids JSON-RPC request ID collisions across concurrent clients. The REST API (`/api/**`, e.g. `POST /api/messaging/send`) calls the service layer directly. `GET /health` returns `{"status":"ok"}` anonymously. Secured with OAuth2 bearer tokens verified against Keycloak via `jose`.
 
 ### OAuth2 / Auth flow (HTTP only)
 
-The HTTP server requires a JWT bearer token with:
+Protected endpoints require a JWT bearer token with:
 - **Issuer**: Keycloak realm URL (default `http://localhost:9000/realms/master`)
 - **Audience**: MCP server URL (default `http://localhost:3000`)
-- **Scope**: `mcp:tools`
+- **Scope**: `mcp:tools` for `POST /mcp`, `api:access` for `/api/**`
+
+Both route groups share a single token verifier (`createAuthMiddleware()` in `mcp-http.ts`); only the `requiredScopes` differ. `GET /health` is unauthenticated.
 
 The MCP SDK's `mcpAuthMetadataRouter` serves `/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server` unauthenticated, so clients can discover the auth endpoints automatically.
 

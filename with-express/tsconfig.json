@@ -11,7 +11,7 @@
     "types": ["node"]
   },
   "include": [
-    "with-express/src/**/*.ts"
+    "src/**/*.ts"
   ],
   "exclude": [
     "node_modules",

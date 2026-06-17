@@ -1,16 +1,14 @@
 import {McpServer} from "@modelcontextprotocol/sdk/server/mcp.js";
 import {CallToolResult} from "@modelcontextprotocol/sdk/types.js";
 import {z} from "zod";
+import {sendWhatsappMessage} from "../business/messaging.js";
+import {getPhoneNumberOfContact} from "../business/contacts.js";
 
 export function createMcpServer(): McpServer {
     const server = new McpServer({
         name: "example-server",
         version: "1.0.0"
     });
-    const contactNumbers: Record<string, string> = {
-        "john": "555 123456",
-        "jane": "555 654321",
-    };
 
     server.registerTool("send_whatsapp_message",
         {
@@ -22,7 +20,7 @@ export function createMcpServer(): McpServer {
             }
         },
         async ({phoneNumber, message}): Promise<CallToolResult> => {
-            log(`send message to ${phoneNumber}: ${message}`);
+            sendWhatsappMessage(phoneNumber, message);
             return {
                 content: [{type: "text", text: "Message was sent."}]
             };
@@ -38,8 +36,7 @@ export function createMcpServer(): McpServer {
             }
         },
         async ({name}): Promise<CallToolResult> => {
-            const number = contactNumbers[name.trim().toLowerCase()];
-            log(`returning number for "${name}": ${number}`);
+            const number = getPhoneNumberOfContact(name);
             if (!number) {
                 return {content: [{type: "text", text: `No phone number found for "${name}"`}]};
             } else {
@@ -49,10 +46,4 @@ export function createMcpServer(): McpServer {
     );
 
     return server;
-}
-
-function log(message: string) {
-    // since this server is also used in a STDIO example, we need to log to error
-    // see: https://modelcontextprotocol.io/docs/develop/build-server#logging-in-mcp-servers-2
-    console.error(message);
 }

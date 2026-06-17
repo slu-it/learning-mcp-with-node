@@ -9,6 +9,7 @@ import {requireBearerAuth} from "@modelcontextprotocol/sdk/server/auth/middlewar
 import {InvalidTokenError} from "@modelcontextprotocol/sdk/server/auth/errors.js";
 import {StreamableHTTPServerTransport} from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import {createMcpServer} from "./mcp/mcp-server.js";
+import {sendWhatsappMessage} from "./business/messaging.js";
 
 // CONFIGURATION
 
@@ -36,29 +37,37 @@ function cleanJwtUrl(url: URL): string {
     return str.endsWith("/") ? str.slice(0, -1) : str;
 }
 
-const authMiddleware = requireBearerAuth({
-    verifier: {
-        verifyAccessToken: async (token: string) => {
-            try {
-                const {payload} = await jwtVerify(token, JWKS, {
-                    issuer: cleanJwtUrl(authBaseUrl),
-                    audience: CONFIG.audience,
-                });
-                return {
-                    token,
-                    clientId: (payload.azp ?? payload.client_id) as string,
-                    scopes: typeof payload.scope === 'string' ? payload.scope.split(' ') : [],
-                    expiresAt: payload.exp,
-                };
-            } catch (err) {
-                console.error('auth error', err);
-                throw new InvalidTokenError((err as Error).message ?? 'Invalid token');
-            }
-        },
+const tokenVerifier = {
+    verifyAccessToken: async (token: string) => {
+        try {
+            const {payload} = await jwtVerify(token, JWKS, {
+                issuer: cleanJwtUrl(authBaseUrl),
+                audience: CONFIG.audience,
+            });
+            return {
+                token,
+                clientId: (payload.azp ?? payload.client_id) as string,
+                scopes: typeof payload.scope === 'string' ? payload.scope.split(' ') : [],
+                expiresAt: payload.exp,
+            };
+        } catch (err) {
+            console.error('auth error', err);
+            throw new InvalidTokenError((err as Error).message ?? 'Invalid token');
+        }
     },
-    requiredScopes: ['mcp:tools'],
-    resourceMetadataUrl: getOAuthProtectedResourceMetadataUrl(mcpServerUrl),
-});
+};
+
+// The token verification is shared; only the required scope differs per route group.
+function createAuthMiddleware(requiredScopes: string[]) {
+    return requireBearerAuth({
+        verifier: tokenVerifier,
+        requiredScopes,
+        resourceMetadataUrl: getOAuthProtectedResourceMetadataUrl(mcpServerUrl),
+    });
+}
+
+const mcpAuthMiddleware = createAuthMiddleware(['mcp:tools']);
+const apiAuthMiddleware = createAuthMiddleware(['api:access']);
 
 // EXPRESS BOOTSTRAPPING
 
@@ -83,10 +92,28 @@ app.use(mcpAuthMetadataRouter({
 
 // define routes
 
+// Health check — reachable anonymously, before any auth middleware.
+app.get('/health', (_req: express.Request, res: express.Response) => {
+    res.status(200).json({status: 'ok'});
+});
+
+// Every /api/** route requires a token with the "api:access" scope.
+app.use('/api', apiAuthMiddleware);
+
+app.post('/api/messaging/send', (req: express.Request, res: express.Response) => {
+    const {phoneNumber, message} = req.body ?? {};
+    if (typeof phoneNumber !== 'string' || typeof message !== 'string') {
+        res.status(400).json({error: 'phoneNumber and message are required'});
+        return;
+    }
+    sendWhatsappMessage(phoneNumber, message);
+    res.status(200).json({status: 'sent'});
+});
+
 // Stateless mode: a fresh server and transport are created for every POST and
 // torn down when the response closes. This isolates concurrent clients, since a
 // shared transport would collide on JSON-RPC request IDs.
-app.post('/', authMiddleware, async (req: express.Request, res: express.Response) => {
+app.post('/mcp', mcpAuthMiddleware, async (req: express.Request, res: express.Response) => {
     const server = createMcpServer();
     const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined,
@@ -119,6 +146,8 @@ app.use((err: Error, req: express.Request, res: express.Response, _next: express
 
 app.listen(CONFIG.port, () => {
     console.log(`🚀 MCP Server running on ${mcpServerUrl.origin}`);
-    console.log(`📡 MCP endpoint available at ${mcpServerUrl.origin}`);
+    console.log(`📡 MCP endpoint available at ${mcpServerUrl.origin}/mcp`);
+    console.log(`📨 REST API available at ${mcpServerUrl.origin}/api`);
+    console.log(`❤️  Health check available at ${mcpServerUrl.origin}/health`);
     console.log(`🔐 OAuth metadata available at ${getOAuthProtectedResourceMetadataUrl(mcpServerUrl)}`);
 });
