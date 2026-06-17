@@ -7,7 +7,7 @@ on:
     branches: ["master"]
 
 jobs:
-  build-and-test:
+  express-js:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -28,3 +28,24 @@ jobs:
         run: bash "$GITHUB_WORKSPACE/.github/scripts/check-server-starts.sh" start:stdio "MCP Server running on STDIO" stdio
       - name: "Check: HTTP server can start successfully"
         run: bash "$GITHUB_WORKSPACE/.github/scripts/check-server-starts.sh" start:http "MCP Server running on"
+  nest-js:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: with-nestjs
+    steps:
+      - uses: actions/checkout@v6
+      - name: "Set up Node.js"
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+      - name: "Install Dependencies"
+        run: npm ci
+      - name: "Build"
+        run: npm run build
+      - name: "Test"
+        run: npm run test
+      - name: "Test (e2e)"
+        run: npm run test:e2e
+      - name: "Check: HTTP server can start successfully"
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/check-server-starts.sh" start:prod "MCP Server running on"
